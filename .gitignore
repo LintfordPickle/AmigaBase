@@ -403,4 +403,5 @@ FodyWeavers.xsd
 *.sln.iml
 
 uae/dh0/**
-
+.vscode/
+.vscode/*.*

@@ -9,7 +9,8 @@
 				"args": [
 					"-m68000",
 					"-Fhunk",
-					"-linedebug"
+					"-linedebug",
+					"-ldots"
 				]
 			},
 			"vlink": {
@@ -17,8 +18,8 @@
 				"command": "${config:amiga-assembly.binDir}/vlink",
 				"includes": "*.{s,S,asm,ASM}",
 				"excludes": "",
-				"exefilename": "../uae/dh0/AmigaBase",
-				"entrypoint": "AmigaBase.s",
+				"exefilename": "../uae/dh0/game",
+				"entrypoint": "main.s",
 				"args": [
 					"-bamigahunk",
 					"-Bstatic"
