@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ami:Monitor - Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Fira+Code&display=swap');
+
+        body {
+            background-color: #0f0f0f;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .card {
+            background: #181818;
+            border: 1px solid #2d2d2d;
+        }
+
+        .input-group {
+            background: #111;
+            border: 1px solid #2d2d2d;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* CRT Effect */
+        .crt-screen {
+            background: radial-gradient(circle, #1a1a1a 0%, #000000 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .crt-screen::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Danger/Blanking Zones */
+        .blanking {
+            background: repeating-linear-gradient(45deg, #121212, #121212 8px, #181818 8px, #181818 16px);
+            position: absolute;
+            z-index: 5;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            width: 100%;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #4ec9b0;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border: none;
+            border-radius: 50%;
+            background: #4ec9b0;
+        }
+
+        input[type=range]::-moz-range-track {
+            height: 2px;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col">
+
+    <header class="h-14 bg-[#1e1e1e] border-b border-[#333] flex items-center justify-between px-6 shrink-0">
+        <h1 class="font-bold uppercase text-[#EF0000] tracking-tighter">Ami <span class="text-white italic opacity-80">Monitor Output</span></h1>
+
+        <div class="flex items-center gap-2">
+
+            <button onclick="loadWorkbenchDefaults()" class="px-3 py-1 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors">
+                Reset
+            </button>
+
+            <div class="relative group">
+                <div class="cursor-help text-gray-500 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </div>
+
+                <div class="absolute top-full right-0 mt-2 w-80 p-3 
+            bg-[#181818] border border-[#2d2d2d] rounded-lg shadow-xl 
+            opacity-0 invisible group-hover:opacity-100 group-hover:visible 
+            transition-all duration-200 z-50 pointer-events-none text-xs">
+
+                    <div class="font-bold text-[#4ec9b0] mb-2 border-b border-[#2d2d2d] pb-1">Nominal OCS Values</div>
+
+                    <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-gray-400">
+
+                        <div></div>
+                        <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500">Lo-Res</div>
+                        <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500">Hi-Res</div>
+
+                        <div class="col-span-3 font-bold text-gray-300 mt-1 border-b border-[#2d2d2d]/30 pb-0.5">PAL (Standard)</div>
+                        <div>DIWSTRT</div>
+                        <div class="font-mono text-white">$2C81</div>
+                        <div class="font-mono text-white">$2C81</div>
+
+                        <div>DIWSTOP</div>
+                        <div class="font-mono text-white">$2CC1</div>
+                        <div class="font-mono text-white">$2CC1</div>
+
+                        <div class="col-span-3 font-bold text-gray-300 mt-2 border-b border-[#2d2d2d]/30 pb-0.5">NTSC (Standard)</div>
+                        <div>DIWSTRT</div>
+                        <div class="font-mono text-white">$2C81</div>
+                        <div class="font-mono text-white">$2C81</div>
+
+                        <div>DIWSTOP</div>
+                        <div class="font-mono text-white">$F4C1</div>
+                        <div class="font-mono text-white">$F4C1</div>
+
+                        <div class="col-span-3 font-bold text-gray-300 mt-2 border-b border-[#2d2d2d]/30 pb-0.5">Data Fetch (DDF)</div>
+                        <div>DDFSTRT</div>
+                        <div class="font-mono text-white">$0038</div>
+                        <div class="font-mono text-[#4ec9b0]">$003C</div>
+                        <div>DDFSTOP</div>
+                        <div class="font-mono text-white">$00D0</div>
+                        <div class="font-mono text-[#4ec9b0]">$00D4</div>
+                    </div>
+
+                    <div class="absolute bottom-full right-2 
+                border-4 border-transparent border-b-[#2d2d2d]"></div>
+                </div>
+            </div>
+        </div>
+
+
+    </header>
+
+    <main class="flex-1 flex gap-6 p-6 overflow-hidden">
+
+        <!-- Left Pane -->
+        <div class="w-[400px] flex flex-col gap-4 overflow-y-auto pr-2">
+
+            <div class="card p-5 rounded-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[#4ec9b0] font-bold text-xs uppercase tracking-widest">Display Window</h3>
+                    <div class="flex bg-black p-1 rounded border border-[#333]">
+                        <button onclick="setRegion('PAL')" id="btn-pal" class="px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black">PAL</button>
+                        <button onclick="setRegion('NTSC')" id="btn-ntsc" class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white">NTSC</button>
+                    </div>
+                </div>
+
+                <div class="input-group mb-4">
+                    <label class="text-[12px] text-gray-400 font-bold uppercase mb-2 block">Position</label>
+                    <label class="text-[10px] text-gray-400 font-bold uppercase mb-2 block">DIWSTRT ($DFF08e)</label>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-[10px] mono mb-1">
+                                <span>V-POS</span>
+                                <span><b id="val-v-start">44 ($29)</b></span>
+                            </div>
+                            <input type="range" id="in-diwstop-v" min="0" max="150" value="44">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[10px] mono mb-1">
+                                <span>H-POS</span>
+                                <span><b id="val-h-start">129 ($81)</b></span>
+                            </div>
+                            <input type="range" id="in-diwstrt-h" min="0" max="255" value="129">
+                        </div>
+
+                        <div class="text-[9px] text-gray-400">
+                            <p><i>The starting position is always interpretted in low-res mode, and doesn't change with hi-res or interlaced.</i></p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-[#333] flex justify-between items-center">
+                        <span class="text-[9px] text-gray-500 uppercase font-bold">Calculated DIWSTRT</span>
+                        <code id="out-diwstrt" class="text-[#4ec9b0] font-mono text-xs">$2C81</code>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <span>
+                        <label class="text-[12px] text-gray-400 font-bold uppercase mb-2 block">Dimensions</label>
+                        <label class="text-[10px] text-gray-400 font-bold uppercase mb-2 block">DIWSTOP ($DFF090)</label>
+                    </span>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-[10px] mono mb-1">
+                                <span>HEIGHT</span>
+                                <span><b id="val-height">256</b> lines</span>
+                            </div>
+                            <input type="range" id="in-height" min="100" max="280" step="1" value="256">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[10px] mono mb-1">
+                                <span>WIDTH</span>
+                                <span><b id="val-width">320</b> px</span>
+                            </div>
+                            <input type="range" id="in-width" min="160" max="368" step="16" value="320">
+                        </div>
+                        <div class="text-[9px] text-gray-400">
+                            <p><i>Similar to DIWSTRT, the stopping position is always interpretted in low-res mode, and doesn't change with hi-res or interlaced.</i></p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-[#333] flex justify-between items-center">
+                        <span class="text-[9px] text-gray-500 uppercase font-bold">Calculated DIWSTOP</span>
+                        <code id="out-diwstop" class="text-[#4ec9b0] font-mono text-xs">$2CC1</code>
+                    </div>
+                </div>
+
+                <div class="flex bg-black p-1 rounded border border-[#333] mt-2">
+                    <button onclick="setResolution('LORES')" id="btn-lores" class="flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black">LORES</button>
+                    <button onclick="setResolution('HIRES')" id="btn-hires" class="flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white">HIRES</button>
+                </div>
+            </div>
+
+
+            <div class="card p-5 rounded-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[#4ec9b0] font-bold text-xs uppercase tracking-widest">DMA Data Fetch</h3>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <span class="text-[9px] text-gray-500 uppercase">Auto-Calc</span>
+                        <input type="checkbox" id="auto-calc" checked class="accent-[#4ec9b0]">
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button onclick="toggleFeature('scrolling')" id="feat-scrolling" class="text-[9px] border border-[#333] py-1 rounded hover:bg-[#222] transition-colors">SCROLLING</button>
+                    <button onclick="toggleFeature('dualpf')" id="feat-dualpf" class="text-[9px] border border-[#333] py-1 rounded hover:bg-[#222] transition-colors">DUAL
+                        PF</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase font-bold mb-1 block">DDFSTRT
+                            ($DFF092)</label>
+                        <div class="bg-black p-3 border border-[#222] rounded-lg flex justify-between items-center">
+                            <input type="number" id="in-ddfstrt" value="56" class="bg-transparent text-lg font-bold text-white mono w-20 focus:outline-none">
+                            <span id="hex-92" class="text-[12px] text-green-500 mono">$38</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase font-bold mb-1 block">DDFSTOP
+                            ($DFF094)</label>
+                        <div class="bg-black p-3 border border-[#222] rounded-lg flex justify-between items-center">
+                            <input type="number" id="in-ddfstop" value="208" class="bg-transparent text-lg font-bold text-white mono w-20 focus:outline-none">
+                            <span id="hex-94" class="text-[12px] text-green-500 mono">$D0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4 rounded-xl bg-black border-[#333]">
+
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex bg-[#111] p-1 rounded border border-[#333]">
+                        <button onclick="setAsmMode('m68k')" id="btn-m68k" class="px-3 py-1 text-[9px] font-bold rounded bg-[#4ec9b0] text-black transition-all">M68K</button>
+                        <button onclick="setAsmMode('copper')" id="btn-copper" class="px-3 py-1 text-[9px] font-bold rounded text-gray-500 hover:text-white transition-all">COPPER</button>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span id="copy-toast" class="text-[9px] text-[#4ec9b0] font-bold opacity-0 transition-opacity duration-300">COPIED!</span>
+                        <button onclick="copyCode()" class="text-[9px] text-gray-500 hover:text-white uppercase font-bold tracking-tighter">Copy All</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <code id="code-out" class="text-xs text-[#ce9178] block whitespace-pre font-mono leading-relaxed"></code>
+                </div>
+            </div>
+
+            <p class="mt-2 text-[11px] text-gray-200 bg-[#222] p-1 rounded">
+                The idea is to figure out, how many 16-bit words of data the HW needs to fetch to fill the width of the display window.
+            </p>
+
+        </div>
+
+        <!-- Crt-Display Pane-->
+        <div class="flex-1 flex flex-col gap-4">
+
+            <!-- Crt-Area -->
+            <div class="flex-1 card bg-[#0a0a0a] flex items-center justify-center p-24 relative">
+                <div class="relative w-full h-full flex items-center justify-center">
+
+                    <div class="absolute -right-12 top-0 bottom-0 flex items-center">
+                        <div class="relative h-full w-px bg-gray-400">
+                            <div class="absolute top-0 -left-1 w-2 h-px bg-gray-400"></div>
+                            <div class="absolute bottom-0 -left-1 w-2 h-px bg-gray-400"></div>
+                        </div>
+
+                        <div id="crt-height" class="ml-1 text-[11px] text-gray-400 font-mono whitespace-nowrap">
+                            312<br />lines
+                        </div>
+                    </div>
+
+                    <div class="absolute -bottom-12 left-0 right-0 flex flex-col items-center">
+                        <div class="relative w-full h-px bg-gray-400">
+                            <div class="absolute left-0 -top-1 h-2 w-px bg-gray-400"></div>
+                            <div class="absolute right-0 -top-1 h-2 w-px bg-gray-400"></div>
+                        </div>
+                        <div id="crt-width" class="mt-2 text-[12px] text-gray-400 font-mono">
+                            ~226 ccs <!-- $00 to $E2 -->
+                        </div>
+                    </div>
+
+                    <div id="label-origin" class="absolute -left-24 -top-8 text-[10px] text-white mono text-right w-20">(0,0)<br>
+                        <span class="text-gray-500 text-[8px]">SYNC START</span>
+                    </div>
+
+                    <div id="label-wb" class="absolute -left-24 top-16 text-[10px] text-white mono text-right w-20">
+                        Standard ($81,$2C)<br>
+                        <span class="text-gray-500 text-[8px]">VISIBLE</span>
+                    </div>
+
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-50 overflow-visible" id="callout-svg">
+                        <line x1="-10" y1="-5" x2="0" y2="0" stroke="white" stroke-width="0.5" stroke-dasharray="2,2" id="line-origin" />
+                        <line x1="-10" y1="75" x2="0" y2="0" stroke="white" stroke-width="0.5" stroke-dasharray="2,2" id="line-wb" />
+                    </svg>
+
+                    <div id="crt-container" class="crt-screen w-full h-full relative z-10">
+
+                        <!-- left deadzone -->
+                        <div class="blanking h-full left-0 w-[15%] border-r border-[#333] flex items-center justify-center">
+                            <span class="rotate-90 text-[10px] text-gray-700 font-bold uppercase tracking-widest">Deadzone</span>
+                        </div>
+
+                        <!-- top deadzone -->
+                        <div id="deadzone-top" class="blanking w-full top-0 h-[10%] border-b border-[#333] flex items-center justify-center">
+                            <span class="text-[10px] text-gray-700 font-bold uppercase tracking-widest">Deadzone</span>
+                        </div>
+
+                        <!-- lower deadzone / overscan -->
+                        <div id="deadzone-bottom" class="absolute bottom-0 left-0 w-full h-[8%] border-t border-[#333] flex items-center justify-center bg-black bg-opacity-40">
+                            <span class="text-[10px] text-gray-700 font-bold uppercase tracking-widest">Overscan</span>
+                        </div>
+
+                        <!-- right side deadzone / overscan -->
+                        <div class="absolute right-0 top-0 h-full w-[10%] border-l border-[#333] flex items-center justify-center bg-black bg-opacity-40">
+                            <span class="rotate-90 text-[10px] text-gray-700 font-bold uppercase tracking-widest">Overscan</span>
+                        </div>
+
+
+                        <div class="absolute inset-0 pointer-events-none opacity-20 z-0" style="background-image: repeating-linear-gradient(90deg, transparent, transparent 15px, #555 15px, #555 16px); background-size: calc(100% / (454 / 16)) 100%;">
+                        </div>
+
+                        <div id="vis-diw" class="absolute border-2 border-[#4ec9b0] bg-[#4ec9b0] bg-opacity-10 z-20 transition-all duration-200 shadow-[0_0_30px_rgba(78,201,176,0.1)]">
+
+                            <div id="vis-content" class="w-full h-full opacity-30 relative overflow-hidden">
+                                <div class="absolute inset-0" style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 10px 10px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="coord-tooltip" class="pointer-events-none absolute hidden z-[100] bg-black/80 border border-gray-500 text-green-400 font-mono text-[10px] p-2 rounded shadow-xl whitespace-nowrap">
+                            X: 0, Y: 0
+                        </div>
+
+                        <div id="vis-ddf" class="absolute top-0 bottom-0 bg-green-600 opacity-20 border-x border-green-500 z-10 transition-all duration-200">
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="flex justify-between items-end mb-4 px-2">
+                <div class="flex gap-4 text-[10px] font-bold tracking-wider">
+                    <div class="flex items-center uppercase gap-2">
+                        <div class="w-3 h-3 bg-[#222] border border-[#444] stripes"></div> <span class="text-gray-500">Blanking</span>
+                    </div>
+                    <div class="flex items-center uppercase gap-2">
+                        <div class="w-3 h-3 border-2 border-[#4ec9b0]"></div> <span class="text-[#4ec9b0]">Window</span>
+                    </div>
+                    <div class="flex items-center uppercase gap-2">
+                        <div class="w-3 h-3 bg-green-500 opacity-30"></div> <span class="text-green-500">Fetch</span>
+                    </div>
+
+                    <div class="flex absolute -right-0 text-gray-500 pr-5"> <i>
+                            <ul>
+                                <li>HW resolution of display window start/stop is twice the HW resolution of data fetch.</li>
+                                <li>1 Color Clock = 2 low-res pixels / 4 hi-res pixel</li>
+                            </ul>
+                        </i></div>
+
+                </div>
+            </div>
+
+            <!-- message output -->
+            <div id="status-card" class="card p-4 rounded-xl border-l-4 border-green-500 bg-[#111]">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-white">System Status</h3>
+                    <span id="status-badge" class="px-2 py-0.5 rounded text-[9px] font-bold bg-green-900 text-green-300">VALID</span>
+                </div>
+                <p id="status-msg" class="text-[11px] text-gray-400 leading-relaxed">
+                    DMA Fetch logic is synchronized with Display Window.
+                </p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        const crt = document.getElementById('crt-container');
+        const tooltip = document.getElementById('coord-tooltip');
+
+        const inputs = {
+            diwstrtX: document.getElementById('in-diwstrt-h'),
+            diwstrtY: document.getElementById('in-diwstop-v'),
+
+            h: document.getElementById('in-height'),
+            w: document.getElementById('in-width'),
+            ddfstrt: document.getElementById('in-ddfstrt'),
+            ddfstop: document.getElementById('in-ddfstop'),
+            autoCalcToggle: document.getElementById('auto-calc'),
+            btnScrolling: document.getElementById('feat-scrolling'),
+            btnDualPf: document.getElementById('feat-dualpf')
+        }
+
+        const labels = {
+            vLabel: document.getElementById('val-v-start'),
+            hLabel: document.getElementById('val-h-start'),
+            diwstrtLabel: document.getElementById('out-diwstrt'),
+            diwstopLabel: document.getElementById('out-diwstop'),
+
+            diw: document.getElementById('vis-diw'),
+            visDdf: document.getElementById('vis-ddf'),
+            monitorSpecs: document.getElementById('monitor-specs'),
+            code: document.getElementById('code-out'),
+
+            labelDiwWidth: document.getElementById('val-width'),
+            labelDiwHeight: document.getElementById('val-height'),
+
+            statusMsg: document.getElementById('status-msg'),
+            statusBadge: document.getElementById('status-badge'),
+            statusCard: document.getElementById('status-card'),
+
+            crtWidth: document.getElementById('crt-width'),
+            crtHeight: document.getElementById('crt-height'),
+        }
+
+        const visual = {
+            diw: document.getElementById('vis-diw'),
+            ddf: document.getElementById('vis-ddf')
+        };
+
+        // Constants
+        const SCALE_X = 227; // CCs
+        const PAL_HEIGHT = 312; // px
+        const NTSC_HEIGHT = 262; // px
+        const WORD_SIZE = 16;
+
+        const buttons = {
+            pal: document.getElementById('btn-pal'),
+            ntsc: document.getElementById('btn-ntsc')
+        };
+
+        const buttonsRes = {
+            lores: document.getElementById('btn-lores'),
+            hires: document.getElementById('btn-hires')
+        };
+
+        let SCALE_Y = PAL_HEIGHT;
+        let CURRENT_REGION = 'PAL';
+        let CURRENT_RES = 'LORES'; // Default
+        let currentAsmMode = 'm68k';
+
+        let features = {
+            scrolling: false,
+            dualpf: false
+        };
+
+        function toHex(n, len = 2) {
+            return '$' + n.toString(16).toUpperCase().padStart(len, '0');
+        }
+
+        function loadWorkbenchDefaults() {
+            if (CURRENT_REGION === 'PAL') {
+                inputs.diwstrtX.value = 129; // $81
+                inputs.diwstrtY.value = 44; // $2C
+                inputs.h.value = 256;
+                inputs.w.value = 320;
+                inputs.ddfstrt.value = 56; // $38
+                inputs.ddfstop.value = 208; // $D0
+            } else {
+                inputs.diwstrtX.value = 129; // $81
+                inputs.diwstrtY.value = 44; // $2C
+                inputs.h.value = 200;
+                inputs.w.value = 320;
+                inputs.ddfstrt.value = 56; // $38
+                inputs.ddfstop.value = 208; // $D0
+            }
+            update();
+        }
+
+        function setResolution(res) {
+            CURRENT_RES = res;
+            if (res === 'HIRES') {
+                inputs.w.step = 32; // HIRES fetches are in 32-pixel blocks (2 words)
+                inputs.w.max = 368;
+                buttonsRes.hires.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+                buttonsRes.lores.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+            } else {
+                inputs.w.step = 16;
+                inputs.w.max = 368;
+                buttonsRes.lores.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+                buttonsRes.hires.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+            }
+            update();
+        }
+
+        function setRegion(region) {
+            let oldRegion = CURRENT_REGION;
+            CURRENT_REGION = region;
+            if (region === 'PAL') {
+                SCALE_Y = PAL_HEIGHT;
+                inputs.h.max = 280;
+
+                buttons.pal.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+                buttons.ntsc.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+
+                // Labels (LOWRES)
+                labels.crtWidth.innerText = '226 cc';
+                labels.crtHeight.innerHTML = '312<br/>lines';
+
+                // Standard PAL Defaults ($2C81, $2CC1)
+                inputs.diwstrtY.value = 44;  // $2C
+                inputs.h.value = 256;        // Results in $2C stop (wrap-around
+
+            } else {
+                SCALE_Y = NTSC_HEIGHT;
+                inputs.h.max = 240; // NTSC overscan maxes out around 241
+
+                buttons.ntsc.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+                buttons.pal.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+
+                // Labels (LOWRES)
+                labels.crtWidth.innerText = '~226 cc';
+                labels.crtHeight.innerHTML = '262<br/>lines';
+
+                // Standard NTSC Defaults ($2C81, $F4C1)
+                inputs.diwstrtY.value = 44;  // $2C
+                inputs.h.value = 200;        // 44 + 200 = 244 ($F4)
+
+                // Vertical Start ($2C is common, but $1D is the 'high' limit for NTSC)
+                // NTSC Workbench usually starts higher up than PAL to center the 200-line image.
+            }
+
+            update();
+        }
+
+        function setAsmMode(mode) {
+            currentAsmMode = mode;
+            const isM68k = mode === 'm68k';
+
+            if (isM68k) {
+                document.getElementById('btn-m68k').className = "px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+                document.getElementById('btn-copper').className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+            } else {
+                document.getElementById('btn-m68k').className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+                document.getElementById('btn-copper').className = "px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+            }
+
+            update();
+        }
+
+        function toggleFeature(feat) {
+            features[feat] = !features[feat];
+            const btn = document.getElementById(`feat-${feat}`);
+            btn.classList.toggle('bg-[#4ec9b0]', features[feat]);
+            btn.classList.toggle('text-black', features[feat]);
+            update();
+        }
+
+        function update() {
+            const diwstrtX = parseInt(inputs.diwstrtX.value);
+            const diwstrtY = parseInt(inputs.diwstrtY.value);
+
+            // Treat 'width' as "Display Width in Lores-Units" (Physical Screen Real Estate)
+            const widthDisplayUnits = parseInt(inputs.w.value);
+            const height = parseInt(inputs.h.value);
+
+            let diwstopX = diwstrtX + widthDisplayUnits;
+            let diwstopY = diwstrtY + height;
+
+            if (diwstopX > 482) diwstopX = 482;
+
+            // In HIRES, the physical width contains 2x pixels. 
+            // We update the label to reflect the *actual* pixel count.
+            const actualPixelWidth = (CURRENT_RES === 'HIRES') ? widthDisplayUnits * 2 : widthDisplayUnits;
+            labels.labelDiwWidth.innerText = actualPixelWidth;
+            labels.labelDiwHeight.innerText = height;
+
+            calculateDataFetch(diwstrtX, actualPixelWidth);
+
+            // --- Update Labels ---
+            labels.hLabel.innerText = diwstrtX + ' (' + toHex(diwstrtX) + ')';
+            labels.vLabel.innerText = diwstrtY + ' (' + toHex(diwstrtY) + ')';
+
+            const diwStartHex = `$${diwstrtY.toString(16).padStart(2, '0')}${diwstrtX.toString(16).padStart(2, '0')}`.toUpperCase();
+            labels.diwstrtLabel.innerText = diwStartHex;
+
+            const diwStopHex = `$${(diwstopY & 0xFF).toString(16).padStart(2, '0')}${(diwstopX & 0xFF).toString(16).padStart(2, '0')}`.toUpperCase();
+            labels.diwstopLabel.innerText = diwStopHex;
+
+            // DIWSTRT and DIWSTOP are defined in low resolution mode, 
+            // but because the resolution is higher, you get more pixels per cc.
+            const SCALE_X_PX = (SCALE_X * 2);
+            const leftPct = (diwstrtX / SCALE_X_PX) * 100;
+            const remainingSpacePct = 100 - leftPct;
+            const widthPct = (widthDisplayUnits / SCALE_X_PX) * 100;
+
+            if (widthPct > remainingSpacePct) {
+                widthPct = remainingSpacePct;
+                // Technically, on a real Amiga, the rest of this 'width' 
+                // would wrap around to the left side of the next line!
+            }
+
+            const topPct = (diwstrtY / SCALE_Y) * 100;
+            const heightPct = ((diwstopY - diwstrtY) / SCALE_Y) * 100;
+
+            // Set the positions for the display-window-rect
+            visual.diw.style.top = `${topPct}%`;
+            visual.diw.style.left = `${leftPct}%`;
+            visual.diw.style.height = `${heightPct}%`;
+            visual.diw.style.width = `${widthPct}%`;
+
+            const H_OFFSET = 17;
+            const ddfstrtInt = parseInt(inputs.ddfstrt.value);
+            const ddfstopInt = parseInt(inputs.ddfstop.value);
+
+            // for the data fetch, we want to convert from HW res to display res (*2)
+            const ddfLeftPixels = (ddfstrtInt * 2);
+            const ddfWidthPixels = (ddfstopInt - ddfstrtInt) * 2;
+
+            const ddfLeftPct = (ddfLeftPixels / SCALE_X_PX) * 100;
+            const ddfWidthPct = (ddfWidthPixels / SCALE_X_PX) * 100;
+
+            // Set the positions for the DDF-rect
+            visual.ddf.style.left = `${ddfLeftPct}%`;
+            visual.ddf.style.width = `${ddfWidthPct}%`;
+
+            checkValidity(diwstrtX, diwstopX, ddfstrtInt, ddfstopInt);
+            updateCallouts();
+
+            const strtHex = `${diwstrtY.toString(16).padStart(2, '0')}${diwstrtX.toString(16).padStart(2, '0')}`.toUpperCase();
+            const stopHex = `${(diwstopY & 0xFF).toString(16).padStart(2, '0')}${(diwstopX & 0xFF).toString(16).padStart(2, '0')}`.toUpperCase();
+            const ddfStrtHex = ddfstrtInt.toString(16).padStart(2, '0').toUpperCase();
+            const ddfStopHex = ddfstopInt.toString(16).padStart(2, '0').toUpperCase();
+
+            if (currentAsmMode === 'm68k') {
+                labels.code.innerText =
+                    `MOVE.W #$${strtHex}, $dff08e ; DIWSTRT
+MOVE.W #$${stopHex}, $dff090 ; DIWSTOP
+MOVE.W #$00${ddfStrtHex}, $dff092 ; DDFSTRT
+MOVE.W #$00${ddfStopHex}, $dff094 ; DDFSTOP`;
+            } else {
+                labels.code.innerText =
+                    `dc.w $008e, $${strtHex} ; DIWSTRT
+dc.w $0090, $${stopHex} ; DIWSTOP
+dc.w $0092, $00${ddfStrtHex} ; DDFSTRT
+dc.w $0094, $00${ddfStopHex} ; DDFSTOP`;
+            }
+        }
+
+        function calculateDataFetch(hStart, diwWidthPx) {
+            if (!inputs.autoCalcToggle.checked) return;
+
+            // Calculate DDFSTRT
+            // The Data Fetch Start is based on the Display Window Start (hStart).
+            // Amiga timing units: 
+            // - 1 Color Clock = 2 low-res / 4 hi-res pixels (pixel density per clock)
+            // - There is a fixed hardware latency of 8.5 color clocks between 
+            //   fetching data and it appearing on screen.
+            // 
+            // Calculation:
+            // We convert the pixel start (hStart) to color clocks (divide by 2)
+            // and subtract the latency (8.5 clocks).
+            // Formula: (hStart / 2) - 8.5
+            //
+            // Note: This is mathematically equivalent to (hStart - 17) / 2.
+            let latency = (CURRENT_RES === 'HIRES') ? 4.5 : 8.5;
+            let ddfStart = (hStart / 2) - latency;
+
+            // DDFSTRT is usually aligned to even values:
+            // in low-res mode, a multiple of 8 is expected (e.g. $30, $38, $40)
+            // in high-res mode, a multiple of 4 is expected (e.g. $38, $3C, $40)
+            if (CURRENT_RES === 'HIRES') {
+                // Align to 4 Color Clock boundary (mask out lowest 2 bits)
+                ddfStart = (ddfStart & 0xFC); // %1111 1100
+            } else {
+                // Align to 8 Color Clock boundary (mask out lowest 3 bits)
+                ddfStart = (ddfStart & 0xF8); // %1111 1000
+            }
+
+            // calc word count
+            let pixelsPerWord = 16;
+            let display_width_in_words = Math.ceil(diwWidthPx / pixelsPerWord);
+
+            // Handle Hardware Scrolling
+            if (features.scrolling) {
+                // If scrolling is active, the hardware needs to fetch data earlier 
+                // to allow the bitplanes to be shifted.
+                // We move the start back by 1 word (16 pixels = 8 color clocks).
+                ddfStart -= 8;
+
+                // We fetch one extra word to ensure the edge of the screen
+                // doesn't go blank as the image is shifted left.
+                display_width_in_words += 1;
+            }
+
+            // Calculate DDFSTOP
+            // From the Amiga Hardware Reference Manual:
+            // Low-res: DDFSTOP = DDFSTRT + (8 * (display_width_word_count - 1))
+            // High-res: DDFSTOP = DDFSTRT + (4 * (display_width_word_count - 2))
+
+            let ddfStop;
+            if (CURRENT_RES === 'HIRES') {
+                ddfStop = ddfStart + (4 * (display_width_in_words - 2));
+            } else {
+                ddfStop = ddfStart + (8 * (display_width_in_words - 1));
+            }
+
+            // Update the display
+            inputs.ddfstrt.value = ddfStart;
+            inputs.ddfstop.value = ddfStop;
+
+            document.getElementById('hex-92').innerText = toHex(ddfStart);
+            document.getElementById('hex-94').innerText = toHex(ddfStop);
+        }
+
+        crt.addEventListener('mouseleave', () => {
+            tooltip.classList.add('hidden');
+        });
+
+        crt.addEventListener('mousemove', (e) => {
+            const rect = crt.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+
+            const relX = (e.clientX - rect.left) / rect.width;
+            const relY = (e.clientY - rect.top) / rect.height;
+
+            // Calculate the Color Clock (The fundamental hardware timing unit)
+            // Range is 0 to 226 ($E2)
+            const ccX = Math.floor(relX * SCALE_X);
+
+            const pixelsPerClock = (CURRENT_RES === 'HIRES') ? 4 : 2;
+            const hardwareX = Math.round(ccX * pixelsPerClock);
+            const hardwareY = Math.round(relY * SCALE_Y);
+
+            let posX = (relX * 100) + 1; // Default: 2% to the right of cursor
+            let posY = (relY * 100) + 1; // Default: 2% below cursor
+
+            if (relX > 0.75) {
+                posX = (relX * 100) - ((tooltipRect.width / rect.width) * 100) - 1;
+            }
+
+            if (relY > 0.8) {
+                posY = (relY * 100) - ((tooltipRect.height / rect.height) * 100) - 1;
+            }
+
+            tooltip.style.left = `${posX}%`;
+            tooltip.style.top = `${posY}%`;
+
+            tooltip.classList.remove('hidden');
+            tooltip.innerHTML = `
+                    <div class="text-white border-b border-gray-600 mb-1 pb-1">BEAM POSITION</div>
+                    Pixel: ${hardwareX}<br>
+                    CC: ${ccX} ($${ccX.toString(16).toUpperCase()})<br>
+                    Line: ${hardwareY}<br>
+                    
+                `;
+        });
+
+        // The 'Callouts' are the coord labels on the crt-display
+        function updateCallouts() {
+            const svg = document.getElementById('callout-svg');
+            const container = document.getElementById('crt-container');
+
+            if (!container) return;
+
+            const rect = container.getBoundingClientRect();
+
+            // Default start position (129, 44) ($812C)
+            const wbPos = getPos(129, 44);
+            const lineWb = document.getElementById('line-wb');
+
+            const targetX = (wbPos.x / 100) * rect.width;
+            const targetY = (wbPos.y / 100) * rect.height;
+
+            lineWb.setAttribute('x2', targetX);
+            lineWb.setAttribute('y2', targetY);
+
+            // Origin (0,0)
+            const lineOrigin = document.getElementById('line-origin');
+            lineOrigin.setAttribute('x2', 0);
+            lineOrigin.setAttribute('y2', 0);
+        }
+
+        /**
+         * Helper to map Hardware Coordinates to % for the callouts.
+         */
+        function getPos(h, v) {
+            let ccToPx = 0.5;
+            return {
+                x: (h / SCALE_X * ccToPx) * 100,
+                y: (v / SCALE_Y) * 100
+            };
+        }
+
+        // Checks the validity of the DDFSTRT/DDFSTOP taking into consideration the display size
+        // and the selected properties of the game (scrolling, playfield size etc.)
+        function checkValidity(hStart, hStop, ddfStart, ddfStop) {
+            // Constants for Amiga Low-Res Hardware
+            let isHiRes = CURRENT_RES === 'HIRES';
+            const LATENCY_PIXELS = isHiRes ? 4.5*2.0 : 8.5*2.0; // 8.5 color clocks
+            const WORD_WIDTH_PIXELS = 16;
+
+            let isScrolling = features.scrolling ? WORD_WIDTH_PIXELS : 0;
+            const effectiveVisStart = (ddfStart * 2) + LATENCY_PIXELS + isScrolling;
+            const effectiveVisEnd = (ddfStop * 2) + LATENCY_PIXELS + WORD_WIDTH_PIXELS;
+
+            let errors = [];
+
+            // If the data appears on screen AFTER the window opens, we have a blank gap on the left.
+            if (effectiveVisStart > hStart) {
+                errors.push(`DDF starts too late (Gap of ${effectiveVisStart - hStart}px on left).`);
+            }
+
+            // DDFSTRT below $18 (24) conflicts with Sprite DMA and Refresh cycles.
+            if (ddfStart < 24) {
+                errors.push("DDF is dangerously low (conflicts with sprites/refresh).");
+            }
+
+            // If the data runs out BEFORE the window closes, we have a blank gap on the right.
+            if (effectiveVisEnd < hStop) {
+                errors.push(`DDF ends too early (Gap of ${hStop - effectiveVisEnd}px on right).`);
+            }
+
+            // Check if we are fetching so early that pixels are being discarded (clipped off the left side of the scree
+            // before the display window is open).
+            if (effectiveVisStart < hStart) {
+                const pixelsLost = hStart - effectiveVisStart;
+                errors.push(`Warning: You are fetching ${pixelsLost} pixels before the window opens.`);
+                errors.push(`The first ${pixelsLost} pixels of your bitmap will be invisible (clipped).`);
+            }
+
+            if (errors.length === 0) {
+                labels.statusCard.className = "card p-4 rounded-xl border-l-4 border-green-500 bg-[#111]";
+                labels.statusBadge.className = "px-2 py-0.5 rounded text-[9px] font-bold bg-green-900 text-green-300";
+                labels.statusBadge.innerText = "VALID";
+                labels.statusMsg.innerText = "Registers are synchronized. DMA fetch covers the visual window correctly.";
+            } else {
+                labels.statusCard.className = "card p-4 rounded-xl border-l-4 border-red-500 bg-[#111]";
+                labels.statusBadge.className = "px-2 py-0.5 rounded text-[9px] font-bold bg-red-900 text-red-300";
+                labels.statusBadge.innerText = "INVALID";
+                labels.statusMsg.innerText = errors[0]; // Show first error
+            }
+        }
+
+        function copyCode() {
+            const code = document.getElementById('code-out').innerText;
+            const toast = document.getElementById('copy-toast');
+
+            navigator.clipboard.writeText(code).then(() => {
+                toast.style.opacity = '1';
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        [inputs.diwstrtY, inputs.diwstrtX, inputs.h, inputs.w, inputs.ddfstrt, inputs.ddfstop, inputs.autoCalcToggle, inputs.btnScrolling, inputs.btnDualPf].forEach(i => i.addEventListener('input', update));
+
+        window.addEventListener('resize', updateCallouts);
+
+        loadWorkbenchDefaults();
+
+    </script>
+</body>
+
+</html>
