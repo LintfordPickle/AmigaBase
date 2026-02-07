@@ -155,14 +155,13 @@
                         <div class="col-span-3 font-bold text-gray-300 mt-2 border-b border-[#2d2d2d]/30 pb-0.5">Data Fetch (DDF)</div>
                         <div>DDFSTRT</div>
                         <div class="font-mono text-white">$0038</div>
-                        <div class="font-mono text-[#4ec9b0]">$003C</div>
+                        <div class="font-mono text-white">$003C</div>
                         <div>DDFSTOP</div>
                         <div class="font-mono text-white">$00D0</div>
-                        <div class="font-mono text-[#4ec9b0]">$00D4</div>
+                        <div class="font-mono text-white">$00D4</div>
                     </div>
 
-                    <div class="absolute bottom-full right-2 
-                border-4 border-transparent border-b-[#2d2d2d]"></div>
+                    <div class="absolute bottom-full right-2 border-4 border-transparent border-b-[#2d2d2d]"></div>
                 </div>
             </div>
         </div>
@@ -247,7 +246,8 @@
 
                 <div class="flex bg-black p-1 rounded border border-[#333] mt-2">
                     <button onclick="setResolution('LORES')" id="btn-lores" class="flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black">LORES</button>
-                    <button onclick="setResolution('HIRES')" id="btn-hires" class="flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white">HIRES</button>
+                    <button onclick="setResolution('HIRES')" id="btn-hires" class="flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white">HIRES</button><br />
+                    <button onclick="setInterlaced()" id="btn-interlaced" class="flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white">INTERLACED</button>
                 </div>
             </div>
 
@@ -491,17 +491,16 @@
 
         const buttons = {
             pal: document.getElementById('btn-pal'),
-            ntsc: document.getElementById('btn-ntsc')
-        };
-
-        const buttonsRes = {
+            ntsc: document.getElementById('btn-ntsc'),
             lores: document.getElementById('btn-lores'),
-            hires: document.getElementById('btn-hires')
+            hires: document.getElementById('btn-hires'),
+            interlaced: document.getElementById('btn-interlaced'),
         };
 
         let SCALE_Y = PAL_HEIGHT;
         let CURRENT_REGION = 'PAL';
         let CURRENT_RES = 'LORES'; // Default
+        let INTERLACED = false;
         let currentAsmMode = 'm68k';
 
         let features = {
@@ -532,18 +531,30 @@
             update();
         }
 
+        function setInterlaced() {
+            INTERLACED = !INTERLACED;
+
+            if (INTERLACED) {
+                buttons.interlaced.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+            } else {
+                buttons.interlaced.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+            }
+
+
+        }
+
         function setResolution(res) {
             CURRENT_RES = res;
             if (res === 'HIRES') {
                 inputs.w.step = 32; // HIRES fetches are in 32-pixel blocks (2 words)
                 inputs.w.max = 368;
-                buttonsRes.hires.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
-                buttonsRes.lores.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+                buttons.hires.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+                buttons.lores.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
             } else {
                 inputs.w.step = 16;
                 inputs.w.max = 368;
-                buttonsRes.lores.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
-                buttonsRes.hires.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
+                buttons.lores.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded bg-[#4ec9b0] text-black";
+                buttons.hires.className = "flex-1 px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-white";
             }
             update();
         }
@@ -680,8 +691,13 @@
             visual.ddf.style.width = `${ddfWidthPct}%`;
 
             checkValidity(diwstrtX, diwstopX, ddfstrtInt, ddfstopInt);
+
             updateCallouts();
 
+            generateCode(diwstrtY, diwstopY, diwstrtX, diwstopX, ddfstrtInt, ddfstopInt);
+        }
+
+        function generateCode(diwstrtY, diwstopY, diwstrtX, diwstopX, ddfstrtInt, ddfstopInt) {
             const strtHex = `${diwstrtY.toString(16).padStart(2, '0')}${diwstrtX.toString(16).padStart(2, '0')}`.toUpperCase();
             const stopHex = `${(diwstopY & 0xFF).toString(16).padStart(2, '0')}${(diwstopX & 0xFF).toString(16).padStart(2, '0')}`.toUpperCase();
             const ddfStrtHex = ddfstrtInt.toString(16).padStart(2, '0').toUpperCase();
@@ -689,16 +705,24 @@
 
             if (currentAsmMode === 'm68k') {
                 labels.code.innerText =
-                    `MOVE.W #$${strtHex}, $dff08e ; DIWSTRT
-MOVE.W #$${stopHex}, $dff090 ; DIWSTOP
-MOVE.W #$00${ddfStrtHex}, $dff092 ; DDFSTRT
-MOVE.W #$00${ddfStopHex}, $dff094 ; DDFSTOP`;
+ `LEA CUSTOM,a0
+MOVE.W #$${strtHex},DIWSTRT(a0)
+MOVE.W #$${stopHex},DIWSTOP(a0)
+MOVE.W #$00${ddfStrtHex},DDFSTRT(a0)
+MOVE.W #$00${ddfStopHex},DDFSTOP(a0)
+MOVE.W #$1200,BPLCON0(a0) ; Set bitplane, enable composite color
+MOVE.W #0,BPLCON1(a0) ; set horizontal shift to 0
+MOVE.W #0,BPL1MOD(a0) ; set modulo to 0 for all odd bitplanes
+MOVE.W #0,BPL2MOD(a0) ; set modulo to 0 for all even bitplanes`;
             } else {
                 labels.code.innerText =
-                    `dc.w $008e, $${strtHex} ; DIWSTRT
+`dc.w $008e, $${strtHex} ; DIWSTRT
 dc.w $0090, $${stopHex} ; DIWSTOP
 dc.w $0092, $00${ddfStrtHex} ; DDFSTRT
-dc.w $0094, $00${ddfStopHex} ; DDFSTOP`;
+dc.w $0094, $00${ddfStopHex} ; DDFSTOP
+dc.w $0100, $1200 ; BPLCON0 - Set bitplane, enable composite color
+dc.w $0108, $#0 ; BPL1MOD - set modulo to 0 for all odd bitplanes
+dc.w $010A, $#0 ; BPL2MOD - set modulo to 0 for all even bitplanes`;
             }
         }
 
@@ -852,7 +876,7 @@ dc.w $0094, $00${ddfStopHex} ; DDFSTOP`;
         function checkValidity(hStart, hStop, ddfStart, ddfStop) {
             // Constants for Amiga Low-Res Hardware
             let isHiRes = CURRENT_RES === 'HIRES';
-            const LATENCY_PIXELS = isHiRes ? 4.5*2.0 : 8.5*2.0; // 8.5 color clocks
+            const LATENCY_PIXELS = isHiRes ? 4.5 * 2.0 : 8.5 * 2.0; // 8.5 color clocks
             const WORD_WIDTH_PIXELS = 16;
 
             let isScrolling = features.scrolling ? WORD_WIDTH_PIXELS : 0;
